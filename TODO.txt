@@ -1,0 +1,132 @@
+pip install rich
+import json
+import os
+from datetime import datetime
+from rich.console import Console
+from rich.table import Table
+from rich.prompt import Prompt
+from rich import box
+
+TASKS_FILE = "tasks.json"
+console = Console()
+
+def load_tasks():
+    if os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, "r") as file:
+            return json.load(file)
+    return []
+
+def save_tasks(tasks):
+    with open(TASKS_FILE, "w") as file:
+        json.dump(tasks, file, indent=2)
+
+def display_tasks(tasks, sort_by=None):
+    if not tasks:
+        console.print("\n[bold yellow]No tasks found.[/bold yellow]\n")
+        return
+
+    if sort_by == "priority":
+        tasks.sort(key=lambda x: x["priority"])
+    elif sort_by == "due":
+        tasks.sort(key=lambda x: x["due"] or "9999-12-31")
+
+    table = Table(title="📋 To-Do List", box=box.SIMPLE)
+    table.add_column("No.", justify="center")
+    table.add_column("Task", style="bold")
+    table.add_column("Priority", justify="center")
+    table.add_column("Due Date", justify="center")
+    table.add_column("Status", justify="center")
+
+    for i, task in enumerate(tasks, 1):
+        status = "[green]Done[/green]" if task["done"] else "[red]Pending[/red]"
+        due = task["due"] or "-"
+        priority_color = {
+            "High": "bold red",
+            "Medium": "yellow",
+            "Low": "green"
+        }.get(task["priority"], "white")
+
+        table.add_row(
+            str(i),
+            task["title"],
+            f"[{priority_color}]{task['priority']}[/{priority_color}]",
+            due,
+            status
+        )
+    console.print(table)
+
+def add_task(tasks):
+    title = Prompt.ask("Enter task title")
+    priority = Prompt.ask("Priority", choices=["Low", "Medium", "High"], default="Medium")
+    due = Prompt.ask("Due date (YYYY-MM-DD)", default="")
+    task = {
+        "title": title,
+        "priority": priority,
+        "due": due if due else None,
+        "done": False
+    }
+    tasks.append(task)
+    console.print("[green]Task added![/green]")
+
+def mark_done(tasks):
+    display_tasks(tasks)
+    index = Prompt.ask("Enter task number to mark as done", default="")
+    if index.isdigit() and 1 <= int(index) <= len(tasks):
+        tasks[int(index)-1]["done"] = True
+        console.print("[green]Task marked as done.[/green]")
+    else:
+        console.print("[red]Invalid input.[/red]")
+
+def delete_task(tasks):
+    display_tasks(tasks)
+    index = Prompt.ask("Enter task number to delete", default="")
+    if index.isdigit() and 1 <= int(index) <= len(tasks):
+        task = tasks.pop(int(index)-1)
+        console.print(f"[red]Deleted:[/red] {task['title']}")
+    else:
+        console.print("[red]Invalid input.[/red]")
+
+def search_task(tasks):
+    keyword = Prompt.ask("Enter keyword to search")
+    matches = [t for t in tasks if keyword.lower() in t["title"].lower()]
+    if matches:
+        display_tasks(matches)
+    else:
+        console.print("[yellow]No matches found.[/yellow]")
+
+def main():
+    tasks = load_tasks()
+    while True:
+        console.print("\n[bold cyan]==== TO-DO LIST MENU ==== [/bold cyan]")
+        console.print("1. View Tasks")
+        console.print("2. Add Task")
+        console.print("3. Mark Task as Done")
+        console.print("4. Delete Task")
+        console.print("5. Search Task")
+        console.print("6. Sort by Priority")
+        console.print("7. Sort by Due Date")
+        console.print("8. Exit")
+
+        choice = Prompt.ask("Choose an option", choices=[str(i) for i in range(1, 9)])
+
+        if choice == "1":
+            display_tasks(tasks)
+        elif choice == "2":
+            add_task(tasks)
+        elif choice == "3":
+            mark_done(tasks)
+        elif choice == "4":
+            delete_task(tasks)
+        elif choice == "5":
+            search_task(tasks)
+        elif choice == "6":
+            display_tasks(tasks, sort_by="priority")
+        elif choice == "7":
+            display_tasks(tasks, sort_by="due")
+        elif choice == "8":
+            save_tasks(tasks)
+            console.print("\n[bold green]Goodbye! Tasks saved.[/bold green]")
+            break
+
+if __name__ == "__main__":
+    main()

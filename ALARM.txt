@@ -1,0 +1,69 @@
+
+pip install playsound
+
+import datetime
+import time
+import threading
+from playsound import playsound
+
+alarms = []
+
+def ring_alarm(alarm_time):
+    print(f"\n⏰ Alarm ringing for {alarm_time}! ⏰")
+    for _ in range(2):
+        playsound("alarm.mp3")
+        time.sleep(1)
+
+    snooze = input("Snooze for 5 minutes? (y/n): ").strip().lower()
+    if snooze == 'y':
+        new_alarm = datetime.datetime.now() + datetime.timedelta(minutes=5)
+        alarms.append(new_alarm.strftime("%H:%M"))
+        print(f"Snoozed to {new_alarm.strftime('%H:%M')}")
+
+def alarm_check():
+    while True:
+        now = datetime.datetime.now().strftime("%H:%M")
+        if now in alarms:
+            alarms.remove(now)  # prevent re-trigger
+            threading.Thread(target=ring_alarm, args=(now,)).start()
+        time.sleep(30)
+
+def add_alarm():
+    alarm_time = input("Enter alarm time (HH:MM 24hr format): ")
+    try:
+        datetime.datetime.strptime(alarm_time, "%H:%M")
+        alarms.append(alarm_time)
+        print(f"Alarm set for {alarm_time}")
+    except ValueError:
+        print("Invalid time format.")
+
+def show_alarms():
+    if alarms:
+        print("Current alarms:")
+        for i, a in enumerate(alarms, 1):
+            print(f"{i}. {a}")
+    else:
+        print("No alarms set.")
+
+def main():
+    threading.Thread(target=alarm_check, daemon=True).start()
+
+    while True:
+        print("\n--- Alarm Clock ---")
+        print("1. Set Alarm")
+        print("2. Show Alarms")
+        print("3. Exit")
+        choice = input("Choose an option: ").strip()
+
+        if choice == '1':
+            add_alarm()
+        elif choice == '2':
+            show_alarms()
+        elif choice == '3':
+            print("Exiting alarm clock. Bye!")
+            break
+        else:
+            print("Invalid choice.")
+
+if __name__ == "__main__":
+    main()
